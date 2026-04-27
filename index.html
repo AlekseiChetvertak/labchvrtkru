@@ -822,18 +822,20 @@ function renderQuestion() {
   document.getElementById('q-text').textContent = q.text;
   const optsDiv = document.getElementById('q-options');
   optsDiv.innerHTML = '';
-  q.options.forEach((opt, i) => {
-    const letter = String.fromCharCode(65+i);
+// Внутри renderQuestion (тест уровня)
+q.options.forEach((opt, i) => {
     const btn = document.createElement('button');
     btn.className = 'option-btn';
-    btn.innerHTML = `<span class="option-letter">${letter}</span>${esc(opt)}`;
+    btn.innerHTML = `<span class="option-letter">${String.fromCharCode(65+i)}</span>${esc(opt)}`;
+    
     btn.onclick = () => {
-      currentAnswers.push({ question_id: q.id, user_answer: letter });
-      currentQIdx++;
-      renderQuestion();
+        // МЕНЯЕМ ТУТ: передаем opt (текст), а не букву
+        currentAnswers.push({ question_id: q.id, user_answer: opt }); 
+        currentQIdx++;
+        renderQuestion();
     };
     optsDiv.appendChild(btn);
-  });
+});
 }
 
 async function submitTest() {
@@ -893,10 +895,12 @@ function renderTraining() {
       const btn = document.createElement('button');
       btn.className = 'training-opt';
       btn.textContent = `${letter}. ${opt}`;
+      // Внутри renderTraining (режим тренировки)
       btn.onclick = () => {
-        trainingAnswers[idx] = { question_id: q.id, user_answer: letter };
-        optsDiv.querySelectorAll('.training-opt').forEach(b => b.classList.remove('sel'));
-        btn.classList.add('sel');
+          // МЕНЯЕМ ТУТ: передаем opt (текст), а не букву
+          trainingAnswers[idx] = { question_id: q.id, user_answer: opt }; 
+          optsDiv.querySelectorAll('.training-opt').forEach(b => b.classList.remove('sel'));
+          btn.classList.add('sel');
       };
       optsDiv.appendChild(btn);
     });
