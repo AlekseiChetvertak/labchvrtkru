@@ -702,37 +702,29 @@ async function api(endpoint, method, body, needAuth = true) {
   const headers = { 'Content-Type': 'application/json' };
   if (needAuth && token) headers['Authorization'] = `Bearer ${token}`;
   
+  const res = await fetch(`${API_BASE}/${endpoint}`, {
+    method, headers, body: body ? JSON.stringify(body) : undefined
+  });
+
+  // Читаем ответ как текст, чтобы не упасть на пустом месте
+  const responseText = await res.text();
+  let data;
+  
   try {
-    const res = await fetch(`${API_BASE}/${endpoint}`, {
-      method, headers, body: body ? JSON.stringify(body) : undefined
-    });
-
-    const responseText = await res.text(); // Читаем как чистый текст
-    let data;
-
-    try {
-      data = JSON.parse(responseText); // Пробуем превратить в JSON
-    } catch (e) {
-      // Если это не JSON (например, ошибка сервера в HTML)
-      throw new Error(`Ошибка сервера: ${res.status}. Проверьте логи в консоли Yandex Cloud.`);
-    }
-
-    if (res.status === 401) {
-      localStorage.removeItem('token');
-      token = null;
-      document.getElementById('appArea').classList.add('hidden');
-      document.getElementById('landing').classList.remove('hidden');
-      openModal('login');
-      throw new Error('Сессия истекла, войдите снова');
-    }
-
-    if (!res.ok) throw new Error(data.error || 'Произошла ошибка');
-    
-    return data;
-  } catch (err) {
-    console.error('API Error:', err);
-    throw err;
+    data = JSON.parse(responseText);
+  } catch (e) {
+    console.error("Server error response:", responseText);
+    throw new Error(`Ошибка сервера (${res.status}). Проверьте логи в облаке.`);
   }
+
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    location.reload(); // Простой способ сбросить состояние
+    return;
+  }
+
+  if (!res.ok) throw new Error(data.error || 'Ошибка запроса');
+  return data;
 }
 
 function esc(s) {
