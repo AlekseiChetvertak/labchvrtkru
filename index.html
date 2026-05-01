@@ -761,24 +761,50 @@ function switchTab(tab) {
   document.getElementById('registerPanel').classList.toggle('active', tab === 'register');
 }
 
-[document.getElementById('loginBtn'), document.getElementById('startBtn'),
+[document.getElementById('cBtn'), document.getElementById('startBtn'),
  document.getElementById('heroStartBtn'), document.getElementById('heroLearnBtn')]
 .forEach(btn => btn && btn.addEventListener('click', () => openModal('login')));
 document.querySelectorAll('.open-modal-btn').forEach(btn =>
   btn.addEventListener('click', () => openModal('login')));
 
 // ── auth ──
+
 document.getElementById('doLoginBtn').addEventListener('click', async () => {
   const email = document.getElementById('loginEmail').value.trim();
   const pass = document.getElementById('loginPassword').value;
   const errDiv = document.getElementById('loginError');
   errDiv.classList.add('hidden');
-  if (!email || !pass) { errDiv.textContent = 'Заполните все поля'; errDiv.classList.remove('hidden'); return; }
+  
+  if (!email || !pass) { 
+    errDiv.textContent = 'Заполните все поля'; 
+    errDiv.classList.remove('hidden'); 
+    return; 
+  }
+
   try {
     const d = await api('user-login', 'POST', {email, password: pass}, false);
-    token = d.token; localStorage.setItem('token', token);
-    closeModal(); startDiagnostic();
-  } catch(e) { errDiv.textContent = e.message; errDiv.classList.remove('hidden'); }
+    
+    // СОХРАНЯЕМ ДАННЫЕ
+    token = d.token; 
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(d)); // Сохраняем d (там токен, id, email и level)
+    
+    closeModal();
+
+    // ПРОВЕРЯЕМ УРОВЕНЬ
+    if (!d.level) {
+      console.log("Уровень не определен, запускаем диагностику...");
+      startDiagnostic();
+    } else {
+      console.log("Уровень найден:", d.level);
+      // Если уровень есть, показываем результаты или сразу в тренинг
+      // Для начала давай просто покажем экран результатов с его уровнем
+      showResult({ level: d.level, topic_scores: {} }); 
+    }
+  } catch(e) { 
+    errDiv.textContent = e.message; 
+    errDiv.classList.remove('hidden'); 
+  }
 });
 
 document.getElementById('doRegisterBtn').addEventListener('click', async () => {
@@ -789,9 +815,13 @@ document.getElementById('doRegisterBtn').addEventListener('click', async () => {
   if (!email || !pass) { errDiv.textContent = 'Заполните все поля'; errDiv.classList.remove('hidden'); return; }
   try {
     const d = await api('register', 'POST', {email, password: pass}, false);
-    token = d.token; localStorage.setItem('token', token);
-    closeModal(); startDiagnostic();
-  } catch(e) { errDiv.textContent = e.message; errDiv.classList.remove('hidden'); }
+    token = d.token; 
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(d)); 
+    
+    closeModal();
+    startDiagnostic(); // Для нового юзера всегда запускаем тест
+  } catch(e){ errDiv.textContent = e.message; errDiv.classList.remove('hidden'); }
 });
 
 // ── test ──
@@ -954,10 +984,24 @@ document.getElementById('errorsBtn').onclick = () => showErrors();
 document.getElementById('closeErrorsBtn').onclick = () => showView('result');
 document.getElementById('backToResultBtn').onclick = () => showView('result');
 
-// ★ ФИКС 3: при обновлении с токеном — не делаем автостарт,
-// просто показываем лендинг. Пользователь нажмёт кнопку сам.
-// Если хочешь автовход — раскомментируй строку ниже:
-// if (token) startDiagnostic();
+(async () => {
+  const savedUser = localStorage.getItem('user');
+  if (token && savedUser) {
+    try {
+      const user = JSON.parse(savedUser);
+      if (!user.level) {
+        startDiagnostic();
+      } else {
+        // Если уровень есть, запрашиваем данные для экрана результатов, 
+        // чтобы юзер видел свой прогресс сразу при входе
+        showView('result'); 
+        // Тут можно вызвать api('get-last-result', 'GET') если захочешь позже
+      }
+    } catch (e) {
+      console.error("Ошибка парсинга данных пользователя", e);
+    }
+  }
+})();
 </script>
 </body>
 </html>
